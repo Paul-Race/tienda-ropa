@@ -1,11 +1,10 @@
 # store/views/checkout.py
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
-from ..models import Cart, Order, OrderItem, ShippingAddress
+from ..models import Cart, Coupon, Order, OrderItem, ShippingAddress
 from ..forms import OrderForm, ShippingAddressForm
-from ..utils.email import send_order_confirmation_email
 
 @login_required
 def checkout(request):
@@ -84,8 +83,7 @@ def checkout(request):
                     # Limpiar carrito
                     cart.items.all().delete()
 
-                    # Enviar email de confirmación
-                    send_order_confirmation_email(order)
+    
 
                     messages.success(
                         request,
