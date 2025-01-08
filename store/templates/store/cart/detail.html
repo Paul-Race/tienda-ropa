@@ -1,0 +1,285 @@
+<!-- templates/store/cart/detail.html -->
+{% extends 'store/base.html' %}
+
+{% block title %}Carrito de Compras{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Carrito de Compras</h5>
+            </div>
+            <div class="card-body">
+                {% if cart.items.exists %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Precio</th>
+                                <th>Cantidad</th>
+                                <th>Subtotal</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in cart.items.all %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if item.product.image %}
+                                        <img src="{{ item.product.image.url }}" 
+                                             alt="{{ item.product.name }}"
+                                             class="img-thumbnail me-2"
+                                             style="width: 50px;">
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="mb-0">{{ item.product.name }}</h6>
+                                            <small class="text-muted">
+                                                Talla: {{ item.product.get_size_display }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${{ item.product.price }}</td>
+                                <td style="width: 150px;">
+                                    <div class="input-group">
+                                        <button class="btn btn-outline-secondary update-quantity" 
+                                                data-action="decrease"
+                                                data-item-id="{{ item.id }}">
+                                            -
+                                        </button>
+                                        <input type="number" 
+                                               class="form-control text-center" 
+                                               value="{{ item.quantity }}"
+                                               min="1"
+                                               max="{{ item.product.stock }}"
+                                               data-item-id="{{ item.id }}"
+                                               readonly>
+                                        <button class="btn btn-outline-secondary update-quantity"
+                                                data-action="increase"
+                                                data-item-id="{{ item.id }}">
+                                            +
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>${{ item.subtotal }}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm remove-item"
+                                            data-item-id="{{ item.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-cart-x" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Tu carrito está vacío</h5>
+                    <p class="text-muted">
+                        ¿No sabes qué comprar? ¡Miles de productos te esperan!
+                    </p>
+                    <a href="{% url 'product_list' %}" class="btn btn-primary">
+                        Ir a Productos
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Cupón de descuento -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="card-title">Cupón de descuento</h6>
+                <form method="post" action="{% url 'apply_coupon' %}" class="mb-3">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <input type="text" 
+                               name="code" 
+                               class="form-control" 
+                               placeholder="Código de cupón">
+                        <button type="submit" class="btn btn-outline-secondary">
+                            Aplicar
+                        </button>
+                    </div>
+                </form>
+                {% if coupon %}
+                <div class="alert alert-success mb-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>
+                            Cupón aplicado: {{ coupon.code }}
+                            {% if coupon.discount_amount %}
+                            (-${{ coupon.discount_amount }})
+                            {% else %}
+                            (-{{ coupon.discount_percentage }}%)
+                            {% endif %}
+                        </span>
+                        <form method="post" action="{% url 'remove_coupon' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-link text-danger">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Resumen del carrito -->
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">Resumen del pedido</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Subtotal</span>
+                    <span>${{ cart.total_amount }}</span>
+                </div>
+                {% if coupon %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Descuento</span>
+                    <span class="text-danger">
+                        {% if coupon.discount_amount %}
+                        -${{ coupon.discount_amount }}
+                        {% else %}
+                        -${{ discount_amount }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Total</span>
+                    <span class="h5 mb-0">${{ total_after_discount }}</span>
+                </div>
+                {% if cart.items.exists %}
+                <div class="d-grid gap-2">
+                    <a href="{% url 'checkout' %}" class="btn btn-primary">
+                        Proceder al Checkout
+                    </a>
+                    <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">
+                        Seguir Comprando
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Actualizar cantidad
+    const updateQuantityButtons = document.querySelectorAll('.update-quantity');
+    updateQuantityButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            const action = this.dataset.action;
+            const input = document.querySelector(`input[data-item-id="${itemId}"]`);
+            let quantity = parseInt(input.value);
+            
+            if (action === 'increase') {
+                if (quantity < parseInt(input.max)) {
+                    quantity++;
+                }
+            } else {
+                if (quantity > 1) {
+                    quantity--;
+                }
+            }
+            
+            updateCartItem(itemId, quantity);
+        });
+    });
+
+    // Eliminar item
+    const removeButtons = document.querySelectorAll('.remove-item');
+    removeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            if (confirm('¿Estás seguro de que deseas eliminar este producto del carrito?')) {
+                removeCartItem(itemId);
+            }
+        });
+    });
+
+    // Funciones de ayuda
+    async function updateCartItem(itemId, quantity) {
+        try {
+            const response = await fetch('/cart/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    quantity: quantity
+                })
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                showMessage('Error al actualizar el carrito', 'danger');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Error al actualizar el carrito', 'danger');
+        }
+    }
+
+    async function removeCartItem(itemId) {
+        try {
+            const response = await fetch('/cart/remove/' + itemId + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                showMessage('Error al eliminar el producto', 'danger');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Error al eliminar el producto', 'danger');
+        }
+    }
+
+    function showMessage(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        setTimeout(() => alertDiv.remove(), 3000);
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

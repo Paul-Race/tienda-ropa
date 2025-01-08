@@ -1,0 +1,226 @@
+<!-- templates/store/checkout/checkout.html -->
+{% extends 'store/base.html' %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Formulario de checkout -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Información de envío</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="checkout-form">
+                    {% csrf_token %}
+                    
+                    {% if default_address %}
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   id="use_existing_address" name="use_existing_address"
+                                   checked>
+                            <label class="form-check-label" for="use_existing_address">
+                                Usar dirección guardada
+                            </label>
+                        </div>
+                        <div class="card mt-2" id="saved-address-card">
+                            <div class="card-body">
+                                <p class="mb-0">
+                                    {{ default_address.street_address }}<br>
+                                    {% if default_address.apartment_address %}
+                                        {{ default_address.apartment_address }}<br>
+                                    {% endif %}
+                                    {{ default_address.city }}, {{ default_address.state }}<br>
+                                    {{ default_address.zip_code }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div id="new-address-form" {% if default_address %}style="display: none;"{% endif %}>
+                        <h6 class="mb-3">Nueva dirección de envío</h6>
+                        {% for field in address_form %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ field.errors.0 }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <h6 class="mb-3 mt-4">Información de contacto</h6>
+                    {% for field in order_form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ field.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            Confirmar Pedido
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Resumen del pedido -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Resumen del pedido</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tbody>
+                            {% for item in cart.items.all %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if item.product.image %}
+                                        <img src="{{ item.product.image.url }}" 
+                                             alt="{{ item.product.name }}"
+                                             class="img-thumbnail me-2"
+                                             style="width: 40px;">
+                                        {% endif %}
+                                        <div>
+                                            <small>{{ item.product.name }}</small><br>
+                                            <small class="text-muted">
+                                                Cantidad: {{ item.quantity }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-end">${{ item.subtotal }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Subtotal</span>
+                    <span>${{ cart.total_amount }}</span>
+                </div>
+                {% if coupon %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Descuento</span>
+                    <span class="text-danger">
+                        -${{ discount_amount }}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between">
+                    <span class="fw-bold">Total</span>
+                    <span class="fw-bold">${{ total_after_discount }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const useExistingAddressCheckbox = document.getElementById('use_existing_address');
+    const newAddressForm = document.getElementById('new-address-form');
+    const savedAddressCard = document.getElementById('saved-address-card');
+
+    if (useExistingAddressCheckbox) {
+        useExistingAddressCheckbox.addEventListener('change', function() {
+            newAddressForm.style.display = this.checked ? 'none' : 'block';
+            if (savedAddressCard) {
+                savedAddressCard.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
+
+    const checkoutForm = document.getElementById('checkout-form');
+    checkoutForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (confirm('¿Estás seguro de que deseas confirmar el pedido?')) {
+            this.submit();
+        }
+    });
+});
+</script>
+{% endblock %}
+
+<!-- templates/store/checkout/success.html -->
+{% extends 'store/base.html' %}
+
+{% block title %}Pedido Confirmado{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                <h2 class="mt-3">¡Gracias por tu compra!</h2>
+                <p class="text-muted">
+                    Tu pedido #{{ order.id }} ha sido confirmado y está siendo procesado.
+                    Te hemos enviado un correo electrónico con los detalles del pedido.
+                </p>
+                <hr>
+                <h5>Resumen del pedido</h5>
+                <div class="table-responsive">
+                    <table class="table">
+                        <tbody>
+                            {% for item in order.items.all %}
+                            <tr>
+                                <td>{{ item.product_name }}</td>
+                                <td>{{ item.quantity }}x</td>
+                                <td class="text-end">${{ item.subtotal }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if order.discount > 0 %}
+                            <tr>
+                                <td colspan="2">Descuento</td>
+                                <td class="text-end text-danger">-${{ order.discount }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td colspan="2" class="fw-bold">Total</td>
+                                <td class="text-end fw-bold">${{ order.total }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4">
+                    <h6>Información de envío:</h6>
+                    <p class="mb-0">
+                        {{ order.shipping_address }}
+                    </p>
+                </div>
+                <div class="mt-4">
+                    <a href="{% url 'order_history' %}" class="btn btn-primary">
+                        Ver mis pedidos
+                    </a>
+                    <a href="{% url 'index' %}" class="btn btn-outline-secondary">
+                        Volver al inicio
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
